@@ -1,0 +1,10 @@
+{
+  "credentials_file": "/path/to/service-account.json",
+  "clients": {
+    "my-client": {
+      "name": "My Client",
+      "folder": "/path/to/project",
+      "site_url": "https://example.com/"
+    }
+  }
+}
