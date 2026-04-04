@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mharnett/google-gsc",
+  "description": "Google Search Console MCP: search analytics, URL inspection, site management.",
+  "repository": {
+    "url": "https://github.com/mharnett/mcp-search-console",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "mcp-google-gsc",
+      "version": "1.0.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        { "name": "GOOGLE_APPLICATION_CREDENTIALS", "description": "Path to service account JSON credentials file", "isRequired": true, "isSecret": false }
+      ]
+    }
+  ]
+}
