@@ -6,12 +6,12 @@
     "url": "https://github.com/mharnett/mcp-search-console",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "mcp-google-gsc",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         { "name": "GOOGLE_APPLICATION_CREDENTIALS", "description": "Path to service account JSON credentials file", "isRequired": true, "isSecret": false }
