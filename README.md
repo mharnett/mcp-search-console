@@ -82,6 +82,8 @@ Or if installed globally:
 }
 ```
 
+**Claude Desktop:** Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
+
 ## Tools
 
 | Tool | Description |
