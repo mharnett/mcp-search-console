@@ -1,4 +1,4 @@
-# mcp-gsc
+# mcp-google-gsc
 
 MCP server for Google Search Console -- search analytics, URL inspection, and site management via Claude.
 
@@ -14,14 +14,14 @@ MCP server for Google Search Console -- search analytics, URL inspection, and si
 ### From npm
 
 ```bash
-npm install mcp-gsc
+npm install mcp-google-gsc
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/drak-marketing/mcp-gsc.git
-cd mcp-gsc
+git clone https://github.com/mharnett/mcp-search-console.git
+cd mcp-google-gsc
 npm install
 npm run build
 ```
@@ -76,7 +76,7 @@ Or if installed globally:
   "mcpServers": {
     "gsc": {
       "command": "npx",
-      "args": ["mcp-gsc"]
+      "args": ["mcp-google-gsc"]
     }
   }
 }
