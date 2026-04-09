@@ -1,9 +1,12 @@
 {
   "name": "mcp-google-gsc",
   "mcpName": "io.github.mharnett/google-gsc",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for Google Search Console API with multi-client support, search analytics, and URL inspection.",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-google-gsc": "dist/index.js"
+  },
   "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
