@@ -45,15 +45,30 @@ interface Config {
 }
 
 function loadConfig(): Config {
+  // Try config.json (for multi-client setups)
   const configPath = join(dirname(new URL(import.meta.url).pathname), "..", "config.json");
-  if (!existsSync(configPath)) {
-    throw new Error(`Config file not found at ${configPath}. Copy config.example.json to config.json and fill in your credentials.`);
+  if (existsSync(configPath)) {
+    const raw = JSON.parse(readFileSync(configPath, "utf-8"));
+    return {
+      credentials_file: raw.credentials_file || process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
+      clients: raw.clients || {},
+    };
   }
-  const raw = JSON.parse(readFileSync(configPath, "utf-8"));
-  return {
-    credentials_file: raw.credentials_file || process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
-    clients: raw.clients || {},
-  };
+
+  // Fall back to env vars (single-property mode)
+  const credsFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (credsFile) {
+    return {
+      credentials_file: credsFile,
+      clients: {},
+    };
+  }
+
+  throw new Error(
+    "No configuration found. Either:\n" +
+    "  1. Set GOOGLE_APPLICATION_CREDENTIALS env var to a service account JSON file, or\n" +
+    "  2. Create a config.json next to the dist/ folder (see config.example.json)"
+  );
 }
 
 function getClientFromWorkingDir(config: Config, cwd: string): ClientConfig | null {
