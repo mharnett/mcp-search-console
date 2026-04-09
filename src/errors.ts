@@ -14,7 +14,7 @@ export class GscRateLimitError extends Error {
     public readonly retryAfterMs: number,
     cause?: unknown,
   ) {
-    super(`Rate limited, retry after ${retryAfterMs}ms`);
+    super(`GSC rate limited, retry after ${retryAfterMs}ms`);
     this.name = "GscRateLimitError";
     this.cause = cause;
   }
@@ -54,7 +54,7 @@ export function classifyError(error: any): Error {
     message.includes("Invalid credentials")
   ) {
     return new GscAuthError(
-      `Auth failed: ${message}. Check service account credentials and permissions.`,
+      `GSC auth failed: ${message}. Check service account credentials and permissions.`,
       error,
     );
   }
