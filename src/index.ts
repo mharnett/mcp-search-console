@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, resolve, isAbsolute } from "path";
 import { google, searchconsole_v1 } from "googleapis";
 import { GoogleAuth } from "googleapis-common";
 import {
@@ -30,6 +30,12 @@ try {
   console.error(`[build] SHA: ${buildInfo.sha} (${buildInfo.builtAt})`);
 } catch {
   console.error(`[build] ${__cliPkg.name}@${__cliPkg.version} (dev mode)`);
+}
+
+// Version safety: warn if running a deprecated or dangerously old version
+const __minimumSafeVersion = "1.0.5"; // minimum version with input sanitization
+if (__cliPkg.version < __minimumSafeVersion) {
+  console.error(`[WARNING] Running deprecated version ${__cliPkg.version}. Minimum safe version is ${__minimumSafeVersion}. Please upgrade.`);
 }
 
 // CLI flags
@@ -74,14 +80,17 @@ function loadConfig(): Config {
   const configPath = join(dirname(new URL(import.meta.url).pathname), "..", "config.json");
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
+    const rawCf = raw.credentials_file || envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
     return {
-      credentials_file: raw.credentials_file || envTrimmed("GOOGLE_APPLICATION_CREDENTIALS"),
+      credentials_file: rawCf && !isAbsolute(rawCf) ? resolve(rawCf) : rawCf,
       clients: raw.clients || {},
     };
   }
 
   // Fall back to env vars (single-property mode)
-  const credsFile = envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
+  const rawCredsFile = envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
+  // Resolve relative credential paths to absolute (CWD is unpredictable in MCP hosts)
+  const credsFile = rawCredsFile && !isAbsolute(rawCredsFile) ? resolve(rawCredsFile) : rawCredsFile;
   if (credsFile) {
     return {
       credentials_file: credsFile,

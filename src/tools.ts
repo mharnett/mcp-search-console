@@ -4,7 +4,7 @@ export const tools: Tool[] = [
   {
     name: "gsc_get_client_context",
     description:
-      "Get the current GSC client context based on working directory. Call this first to confirm which Search Console property you're working with.",
+      "Get the current GSC client context and health status based on working directory. Call this first to confirm which Search Console property you're working with.",
     inputSchema: {
       type: "object",
       properties: {
