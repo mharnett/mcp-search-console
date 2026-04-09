@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.11] - 2026-04-04
+
+### Security
+- Error responses now pass through `safeResponse` to prevent oversized error payloads
+- `safeResponse` deep-clones before truncation to avoid mutating original data
+
 ## [1.0.7] - 2026-04-09
 
 ### Added

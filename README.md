@@ -28,6 +28,8 @@ npm run build
 
 ## Configuration
 
+**Security:** Never share your `.mcp.json` file or commit it to git -- it may contain API credentials. Add `.mcp.json` to your `.gitignore`.
+
 ### Service Account Setup
 
 1. Create a Google Cloud service account with Search Console API access
