@@ -49,6 +49,12 @@ if (process.argv.includes("--version") || process.argv.includes("-v")) {
 }
 
 // ============================================
+// ENV VAR TRIMMING
+// ============================================
+
+const envTrimmed = (key: string): string => (process.env[key] || "").trim().replace(/^["']|["']$/g, "");
+
+// ============================================
 // CONFIGURATION
 // ============================================
 
@@ -69,13 +75,13 @@ function loadConfig(): Config {
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
     return {
-      credentials_file: raw.credentials_file || process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
+      credentials_file: raw.credentials_file || envTrimmed("GOOGLE_APPLICATION_CREDENTIALS"),
       clients: raw.clients || {},
     };
   }
 
   // Fall back to env vars (single-property mode)
-  const credsFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  const credsFile = envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
   if (credsFile) {
     return {
       credentials_file: credsFile,
@@ -485,6 +491,10 @@ process.on("SIGINT", () => {
 
 process.on("SIGPIPE", () => {
   // Client disconnected -- expected during shutdown
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[error] Unhandled promise rejection:", reason);
 });
 
 main().catch(console.error);
