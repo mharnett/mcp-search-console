@@ -248,6 +248,12 @@ class GscManager {
     const startDate = resolveDate(options.startDate);
     const endDate = resolveDate(options.endDate);
 
+    // Future date validation (skip relative dates like "90daysAgo")
+    const today_gsc = new Date().toISOString().slice(0, 10);
+    if (startDate && !options.startDate.includes("daysAgo") && !options.startDate.includes("yesterday") && !options.startDate.includes("today") && startDate > today_gsc) {
+      return { error: `start_date "${startDate}" is in the future. Reports only cover historical data.` };
+    }
+
     const requestBody: any = {
       startDate,
       endDate,
