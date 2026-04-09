@@ -36,6 +36,9 @@ export function validateCredentials(credentialsFile: string): { valid: boolean; 
 
   if (!credentialsFile || credentialsFile.trim() === "") {
     missing.push("credentials_file (in config.json or GOOGLE_APPLICATION_CREDENTIALS env var)");
+  } else if (credentialsFile.trim().length > 0 && credentialsFile.trim().length < 5) {
+    // Basic format validation: path should have reasonable length > 5 chars
+    missing.push("credentials_file (format: path too short, expected length > 5)");
   }
 
   return { valid: missing.length === 0, missing };
@@ -44,6 +47,8 @@ export function validateCredentials(credentialsFile: string): { valid: boolean; 
 export function classifyError(error: any): Error {
   const message = error?.message || String(error);
   const status = error?.code || error?.status;
+  // Check response body for error objects (REST API can return errors in body on 200)
+  const bodyError = error?.response?.body?.error || error?.data?.error || error?.errors?.[0];
 
   if (
     status === 401 ||
@@ -51,7 +56,8 @@ export function classifyError(error: any): Error {
     message.includes("invalid_grant") ||
     message.includes("PERMISSION_DENIED") ||
     message.includes("access_denied") ||
-    message.includes("Invalid credentials")
+    message.includes("Invalid credentials") ||
+    bodyError?.code === 403
   ) {
     return new GscAuthError(
       `GSC auth failed: ${message}. Check service account credentials and permissions.`,

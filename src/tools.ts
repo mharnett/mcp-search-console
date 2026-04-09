@@ -6,6 +6,7 @@ export const tools: Tool[] = [
     description:
       "Get the current GSC client context and health status based on working directory. Call this first to confirm which Search Console property you're working with.",
     inputSchema: {
+      additionalProperties: false,
       type: "object",
       properties: {
         working_directory: {
@@ -21,6 +22,7 @@ export const tools: Tool[] = [
     description:
       "List all verified sites/properties in Google Search Console.",
     inputSchema: {
+      additionalProperties: false,
       type: "object",
       properties: {},
     },
@@ -30,6 +32,7 @@ export const tools: Tool[] = [
     description:
       'Query Google Search Console search analytics data. Returns clicks, impressions, CTR, and position for queries, pages, devices, countries, or dates.',
     inputSchema: {
+      additionalProperties: false,
       type: "object",
       properties: {
         start_date: {
@@ -77,6 +80,7 @@ export const tools: Tool[] = [
     description:
       "Inspect a URL to check if it is indexed in Google Search. Returns index status, mobile usability, and rich results data.",
     inputSchema: {
+      additionalProperties: false,
       type: "object",
       properties: {
         url: {
