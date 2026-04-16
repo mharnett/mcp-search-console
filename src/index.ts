@@ -9,7 +9,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join, dirname, resolve, isAbsolute } from "path";
 import { google, searchconsole_v1 } from "googleapis";
-import { GoogleAuth } from "googleapis-common";
+import { GoogleAuth, OAuth2Client } from "googleapis-common";
 import {
   GscAuthError,
   GscRateLimitError,
@@ -17,6 +17,8 @@ import {
   classifyError,
   validateCredentials,
 } from "./errors.js";
+import { resolveOAuthCredentials } from "./credentials.js";
+import { EMBEDDED_CLIENT_ID, EMBEDDED_CLIENT_SECRET } from "./embedded-secrets.js";
 import { tools } from "./tools.js";
 import { withResilience, safeResponse, logger } from "./resilience.js";
 import v8 from "v8";
@@ -100,9 +102,8 @@ function loadConfig(): Config {
     };
   }
 
-  // Fall back to env vars (single-property mode)
+  // Fall back to env vars for service account
   const rawCredsFile = envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
-  // Resolve relative credential paths to absolute (CWD is unpredictable in MCP hosts)
   const credsFile = rawCredsFile && !isAbsolute(rawCredsFile) ? resolve(rawCredsFile) : rawCredsFile;
   if (credsFile) {
     return {
@@ -111,11 +112,12 @@ function loadConfig(): Config {
     };
   }
 
-  throw new Error(
-    "No configuration found. Either:\n" +
-    "  1. Set GOOGLE_APPLICATION_CREDENTIALS env var to a service account JSON file, or\n" +
-    "  2. Create a config.json next to the dist/ folder (see config.example.json)"
-  );
+  // Fall back to OAuth credentials (from mcp-gsc-auth or env vars)
+  // Return empty credentials_file to signal OAuth mode
+  return {
+    credentials_file: "",
+    clients: {},
+  };
 }
 
 function getClientFromWorkingDir(config: Config, cwd: string): ClientConfig | null {
@@ -193,26 +195,46 @@ function parseDimensionFilter(filterStr: string): DimensionFilter | null {
 class GscManager {
   private config: Config;
   private service: searchconsole_v1.Searchconsole | null = null;
+  private authMode: "service_account" | "oauth" = "service_account";
 
   constructor(config: Config) {
     this.config = config;
 
-    const creds = validateCredentials(config.credentials_file);
-    if (!creds.valid) {
-      const msg = `[STARTUP ERROR] Missing required credentials: ${creds.missing.join(", ")}. MCP will not function.`;
-      console.error(msg);
-      throw new GscAuthError(msg);
+    if (config.credentials_file) {
+      // Service account mode
+      const creds = validateCredentials(config.credentials_file);
+      if (!creds.valid) {
+        const msg = `[STARTUP ERROR] Missing required credentials: ${creds.missing.join(", ")}. MCP will not function.`;
+        console.error(msg);
+        throw new GscAuthError(msg);
+      }
+      this.authMode = "service_account";
+    } else {
+      // OAuth mode -- resolve will throw with helpful message if no credentials found
+      resolveOAuthCredentials(); // validates credentials exist
+      this.authMode = "oauth";
     }
   }
 
   private getService(): searchconsole_v1.Searchconsole {
     if (!this.service) {
-      const auth = new google.auth.GoogleAuth({
-        keyFile: this.config.credentials_file,
-        scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
-      });
-      this.service = google.searchconsole({ version: "v1", auth });
-      console.error(`[startup] Service account loaded from: ${this.config.credentials_file}`);
+      if (this.authMode === "service_account") {
+        const auth = new google.auth.GoogleAuth({
+          keyFile: this.config.credentials_file,
+          scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
+        });
+        this.service = google.searchconsole({ version: "v1", auth });
+        console.error(`[startup] Service account loaded from: ${this.config.credentials_file}`);
+      } else {
+        const resolved = resolveOAuthCredentials();
+        const oauth2Client = new google.auth.OAuth2(
+          resolved.client_id,
+          resolved.client_secret,
+        );
+        oauth2Client.setCredentials({ refresh_token: resolved.refresh_token });
+        this.service = google.searchconsole({ version: "v1", auth: oauth2Client });
+        console.error(`[startup] OAuth credentials loaded (source: ${resolved.source})`);
+      }
     }
     return this.service;
   }
@@ -475,7 +497,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
 
     if (error instanceof GscAuthError) {
-      response.action_required = "Check service account credentials and Search Console permissions.";
+      response.action_required = "Check credentials (service account or OAuth) and Search Console permissions. If using OAuth, re-run: npx mcp-gsc-auth";
     } else if (error instanceof GscRateLimitError) {
       response.retry_after_ms = error.retryAfterMs;
       response.action_required = `Rate limited. Retry after ${Math.ceil(error.retryAfterMs / 1000)} seconds.`;
