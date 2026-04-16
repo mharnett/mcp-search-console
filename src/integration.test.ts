@@ -73,8 +73,8 @@ describe.skipIf(!LIVE)("mcp-gsc integration", () => {
     const result = await client.callTool({
       name: "gsc_inspection",
       arguments: {
-        url: "https://www.flowspace.com/",
-        site_url: "sc-domain:flowspace.com",
+        url: "https://www.example.com/",
+        site_url: "sc-domain:example.com",
       },
     });
     const data = parseToolResult(result);
