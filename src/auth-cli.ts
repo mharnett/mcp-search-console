@@ -368,15 +368,12 @@ function randomState(): string {
 // ENTRY
 // ============================================
 
-const isMain =
-  import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith("/auth-cli.js") ||
-  process.argv[1]?.endsWith("\\auth-cli.js");
-
-if (isMain) {
-  run().catch((err) => {
-    const classified = classifyError(err);
-    process.stderr.write(`\n${classified.message}\n`);
-    process.exit(1);
-  });
-}
+// Always run when loaded as an entry point. The bin symlink name (mcp-gsc-auth)
+// differs from the file name (auth-cli.js), so import.meta.url checks don't
+// work reliably under npx. Since this module has no side effects when imported
+// as a library (run() must be called explicitly), unconditional execution is safe.
+run().catch((err) => {
+  const classified = classifyError(err);
+  process.stderr.write(`\n${classified.message}\n`);
+  process.exit(1);
+});
