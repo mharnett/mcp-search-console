@@ -21,6 +21,7 @@ import { resolveOAuthCredentials } from "./credentials.js";
 import { EMBEDDED_CLIENT_ID, EMBEDDED_CLIENT_SECRET } from "./embedded-secrets.js";
 import { tools } from "./tools.js";
 import { withResilience, safeResponse, logger } from "./resilience.js";
+import { checkForUpdate } from "./updateNotifier.js";
 import v8 from "v8";
 
 // CLI package info
@@ -41,6 +42,9 @@ const __semverLt = (a: string, b: string) => { const pa = a.split(".").map(Numbe
 if (__semverLt(__cliPkg.version, __minimumSafeVersion)) {
   console.error(`[WARNING] Running deprecated version ${__cliPkg.version}. Minimum safe version is ${__minimumSafeVersion}. Please upgrade.`);
 }
+
+// Fire-and-forget npm outdated check. Non-blocking; any error is swallowed.
+void checkForUpdate(__cliPkg.name, __cliPkg.version).catch(() => {});
 
 // CLI flags
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
