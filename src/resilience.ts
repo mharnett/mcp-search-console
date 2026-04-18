@@ -30,8 +30,7 @@ export const logger = pino(
       },
     }),
   },
-  // When no transport (test mode), write to stderr directly
-  process.env.NODE_ENV === "test" ? pino.destination(2) : undefined,
+  pino.destination(2),
 );
 
 // ============================================
