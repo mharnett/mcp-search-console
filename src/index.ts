@@ -95,8 +95,11 @@ interface Config {
 }
 
 function loadConfig(): Config {
-  // Try config.json (for multi-client setups)
-  const configPath = join(dirname(new URL(import.meta.url).pathname), "..", "config.json");
+  // Try config.json (for multi-client setups).
+  // MCP_GSC_CONFIG_PATH env var overrides the default so multiple MCP instances
+  // can run against different configs (e.g., one per client).
+  const defaultConfigPath = join(dirname(new URL(import.meta.url).pathname), "..", "config.json");
+  const configPath = envTrimmed("MCP_GSC_CONFIG_PATH") || defaultConfigPath;
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
     const rawCf = raw.credentials_file || envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");

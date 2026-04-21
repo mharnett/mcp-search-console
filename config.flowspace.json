@@ -1,0 +1,10 @@
+{
+  "credentials_file": "",
+  "clients": {
+    "flowspace": {
+      "name": "Flowspace",
+      "folder": "/Users/mark/claude-code/Flowspace",
+      "site_url": "https://flow.space/"
+    }
+  }
+}
