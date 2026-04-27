@@ -3,7 +3,7 @@
   "clients": {
     "flowspace": {
       "name": "Flowspace",
-      "folder": "/Users/mark/claude-code/Flowspace",
+      "folder": "/Users/mark/claude-code/clients/flowspace",
       "site_url": "https://flow.space/"
     }
   }
