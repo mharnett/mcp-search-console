@@ -8,6 +8,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname, resolve, isAbsolute } from "path";
+import { fileURLToPath } from "url";
 import { google, searchconsole_v1 } from "googleapis";
 import { GoogleAuth, OAuth2Client } from "googleapis-common";
 import {
@@ -25,11 +26,11 @@ import { checkForUpdate } from "./updateNotifier.js";
 import v8 from "v8";
 
 // CLI package info
-const __cliPkg = JSON.parse(readFileSync(join(dirname(new URL(import.meta.url).pathname), "..", "package.json"), "utf-8"));
+const __cliPkg = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf-8"));
 
 // Log build fingerprint at startup
 try {
-  const __buildInfoDir = dirname(new URL(import.meta.url).pathname);
+  const __buildInfoDir = dirname(fileURLToPath(import.meta.url));
   const buildInfo = JSON.parse(readFileSync(join(__buildInfoDir, "build-info.json"), "utf-8"));
   console.error(`[build] SHA: ${buildInfo.sha} (${buildInfo.builtAt})`);
 } catch {
@@ -98,7 +99,7 @@ function loadConfig(): Config {
   // Try config.json (for multi-client setups).
   // MCP_GSC_CONFIG_PATH env var overrides the default so multiple MCP instances
   // can run against different configs (e.g., one per client).
-  const defaultConfigPath = join(dirname(new URL(import.meta.url).pathname), "..", "config.json");
+  const defaultConfigPath = join(dirname(fileURLToPath(import.meta.url)), "..", "config.json");
   const configPath = envTrimmed("MCP_GSC_CONFIG_PATH") || defaultConfigPath;
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
