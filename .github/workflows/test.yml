@@ -22,7 +22,7 @@ jobs:
         with:
           repository: mharnett/mcp-test-harness
           token: ${{ secrets.GH_PAT }}
-          path: ../mcp-test-harness
+          path: mcp-test-harness
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
