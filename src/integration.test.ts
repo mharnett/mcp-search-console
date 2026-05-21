@@ -61,12 +61,10 @@ describe.skipIf(!LIVE)("mcp-gsc integration", () => {
     });
     const data = parseToolResult(result);
     expect(data).toBeDefined();
-    expect(data.rows || data.error).toBeDefined();
-    if (data.rows) {
-      expect(Array.isArray(data.rows)).toBe(true);
-      expect(data.row_count).toBeGreaterThanOrEqual(0);
-      expect(data.date_range).toBeDefined();
-    }
+    expect(data.error).toBeUndefined();
+    expect(Array.isArray(data.rows)).toBe(true);
+    expect(data.row_count).toBeGreaterThanOrEqual(0);
+    expect(data.date_range).toBeDefined();
   }, 15_000);
 
   it("gsc_inspection with a known URL", async () => {
@@ -79,8 +77,14 @@ describe.skipIf(!LIVE)("mcp-gsc integration", () => {
     });
     const data = parseToolResult(result);
     expect(data).toBeDefined();
-    // Should have index_status or error
-    expect(data.index_status || data.error).toBeDefined();
+    // example.com is not owned by the test account; the tool may return either
+    // a structured error or an index_status payload. Require one or the other,
+    // but assert the shape rather than letting `null` slip through.
+    if (data.error !== undefined) {
+      expect(typeof data.error).toBe("string");
+    } else {
+      expect(data.index_status).toBeDefined();
+    }
   }, 15_000);
 
   it("error: invalid site_url returns error", async () => {
@@ -96,7 +100,7 @@ describe.skipIf(!LIVE)("mcp-gsc integration", () => {
     });
     const data = parseToolResult(result);
     expect(data).toBeDefined();
-    // Either returns empty rows or an error
-    expect(data.error || data.rows !== undefined).toBeTruthy();
+    // Invalid site_url must surface as an error (not silently return rows).
+    expect(data.error).toBeDefined();
   }, 15_000);
 });
