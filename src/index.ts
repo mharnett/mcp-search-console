@@ -92,6 +92,11 @@ interface ClientConfig {
 
 interface Config {
   credentials_file: string;
+  // Optional OAuth-mode override: path to a per-config StoredCredentials file
+  // (as written by mcp-gsc-auth). Lets multiple OAuth-mode instances each use
+  // their own token instead of sharing the single global credentials file —
+  // e.g. one Google account per client. Empty => use the global default path.
+  oauth_credentials_file: string;
   clients: Record<string, ClientConfig>;
 }
 
@@ -104,8 +109,10 @@ function loadConfig(): Config {
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
     const rawCf = raw.credentials_file || envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
+    const rawOauth = raw.oauth_credentials_file || "";
     return {
       credentials_file: rawCf && !isAbsolute(rawCf) ? resolve(rawCf) : rawCf,
+      oauth_credentials_file: rawOauth && !isAbsolute(rawOauth) ? resolve(rawOauth) : rawOauth,
       clients: raw.clients || {},
     };
   }
@@ -116,6 +123,7 @@ function loadConfig(): Config {
   if (credsFile) {
     return {
       credentials_file: credsFile,
+      oauth_credentials_file: "",
       clients: {},
     };
   }
@@ -124,6 +132,7 @@ function loadConfig(): Config {
   // Return empty credentials_file to signal OAuth mode
   return {
     credentials_file: "",
+    oauth_credentials_file: "",
     clients: {},
   };
 }
@@ -219,9 +228,14 @@ class GscManager {
       this.authMode = "service_account";
     } else {
       // OAuth mode -- resolve will throw with helpful message if no credentials found
-      resolveOAuthCredentials(); // validates credentials exist
+      resolveOAuthCredentials(this.oauthCredsPath()); // validates credentials exist
       this.authMode = "oauth";
     }
+  }
+
+  // Per-config OAuth token path when set, else undefined (global default).
+  private oauthCredsPath(): string | undefined {
+    return this.config.oauth_credentials_file || undefined;
   }
 
   private getService(): searchconsole_v1.Searchconsole {
@@ -234,7 +248,7 @@ class GscManager {
         this.service = google.searchconsole({ version: "v1", auth });
         console.error(`[startup] Service account loaded from: ${this.config.credentials_file}`);
       } else {
-        const resolved = resolveOAuthCredentials();
+        const resolved = resolveOAuthCredentials(this.oauthCredsPath());
         const oauth2Client = new google.auth.OAuth2(
           resolved.client_id,
           resolved.client_secret,

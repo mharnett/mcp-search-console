@@ -102,13 +102,17 @@ export function resolveOAuthCredentials(
   if (!refresh_token) missing.push("refresh_token");
 
   if (missing.length > 0) {
-    throw new Error(buildMissingCredentialsMessage(missing, Boolean(stored)));
+    throw new Error(buildMissingCredentialsMessage(missing, Boolean(stored), credsFilePath));
   }
 
   return { client_id, client_secret, refresh_token, site_urls, primary_site_url, source };
 }
 
-function buildMissingCredentialsMessage(missing: string[], hasFile: boolean): string {
+function buildMissingCredentialsMessage(
+  missing: string[],
+  hasFile: boolean,
+  credsFilePath: string = credentialsFilePath,
+): string {
   const runAuth = "npx mcp-gsc-auth";
   const lines: string[] = [
     `Missing GSC OAuth credentials: ${missing.join(", ")}.`,
@@ -118,12 +122,12 @@ function buildMissingCredentialsMessage(missing: string[], hasFile: boolean): st
     ``,
     `This will open your browser, walk you through Google sign-in, let you pick which`,
     `Search Console property to use, and save the result to:`,
-    `    ${credentialsFilePath}`,
+    `    ${credsFilePath}`,
   ];
   if (hasFile) {
     lines.push(
       ``,
-      `A credentials file exists at ${credentialsFilePath} but is missing required fields.`,
+      `A credentials file exists at ${credsFilePath} but is missing required fields.`,
       `Re-run the auth helper to refresh it.`,
     );
   }
