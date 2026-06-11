@@ -103,14 +103,21 @@ const retryPolicy = retry(isTransient, {
   backoff,
 });
 
-const circuitBreakerPolicy = circuitBreaker(isTransient, {
-  halfOpenAfter: 60_000,
-  breaker: new ConsecutiveBreaker(5),
-});
-
 const timeoutPolicy = timeout(30_000, TimeoutStrategy.Aggressive);
 
-const policy = wrap(timeoutPolicy, circuitBreakerPolicy, retryPolicy);
+// Per-operation circuit breakers: isolate failures by operation name
+const policyCache = new Map<string, any>();
+function getPolicyForOperation(operationName: string) {
+  if (!policyCache.has(operationName)) {
+    const breaker = circuitBreaker(isTransient, {
+      halfOpenAfter: 60_000,
+      breaker: new ConsecutiveBreaker(5),
+    });
+    const policy = wrap(timeoutPolicy, breaker, retryPolicy);
+    policyCache.set(operationName, policy);
+  }
+  return policyCache.get(operationName);
+}
 
 // ============================================
 // WRAPPED API CALL WITH LOGGING
@@ -123,6 +130,7 @@ export async function withResilience<T>(
   try {
     logger.debug({ operation: operationName }, "Starting API call");
 
+    const policy = getPolicyForOperation(operationName);
     const result = await policy.execute(() => fn());
 
     logger.debug({ operation: operationName }, "API call succeeded");
