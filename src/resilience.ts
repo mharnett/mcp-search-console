@@ -108,7 +108,7 @@ const circuitBreakerPolicy = circuitBreaker(isTransient, {
   breaker: new ConsecutiveBreaker(5),
 });
 
-const timeoutPolicy = timeout(30_000, TimeoutStrategy.Cooperative);
+const timeoutPolicy = timeout(30_000, TimeoutStrategy.Aggressive);
 
 const policy = wrap(timeoutPolicy, circuitBreakerPolicy, retryPolicy);
 
