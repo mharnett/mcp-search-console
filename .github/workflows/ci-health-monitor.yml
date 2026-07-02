@@ -12,6 +12,9 @@ jobs:
       issues: write
 
     steps:
+      - name: Healthcheck — signal start
+        run: curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci/start" || true
+
       - name: Check for sustained CI failure
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,3 +79,10 @@ jobs:
           **Workflow:** https://github.com/${REPO}/actions/workflows/test.yml
 
           This issue was opened automatically. It will close when CI goes green."
+
+      - name: Healthcheck — signal result (dead-man's-switch on this monitor)
+        if: always()
+        run: |
+          SUFFIX=""
+          [ "${{ job.status }}" != "success" ] && SUFFIX="/fail"
+          curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci${SUFFIX}" || true
