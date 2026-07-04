@@ -31,6 +31,20 @@ describe("safeResponse", () => {
     expect((result as any).truncated).toBe(true);
     expect(result.row_count).toBe(result.rows.length);
   });
+
+  it("ties row_count to rows, not a larger sibling array", () => {
+    // row_count describes `rows` specifically. A bigger sibling array (e.g.
+    // GA4/GSC columns) must not hijack row_count during truncation.
+    const obj = {
+      rows: Array.from({ length: 200 }, (_, i) => ({ id: i, data: "x".repeat(50) })),
+      columns: Array.from({ length: 9000 }, (_, i) => ({ id: i, data: "y".repeat(200) })),
+      row_count: 200,
+    };
+    const result = safeResponse(obj, "test") as any;
+    expect(result.truncated).toBe(true);
+    expect(result.row_count).toBe(result.rows.length);
+    expect(result.row_count).not.toBe(result.columns.length);
+  });
 });
 
 describe("withResilience", () => {
