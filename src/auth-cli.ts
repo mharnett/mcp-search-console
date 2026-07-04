@@ -12,19 +12,40 @@
 
 import { google } from "googleapis";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import promptsImport from "prompts";
 import { URL } from "url";
 import { writeStoredCredentials, credentialsFilePath, CREDENTIALS_FILE_VERSION, type StoredCredentials } from "./credentials.js";
 import { EMBEDDED_CLIENT_ID, EMBEDDED_CLIENT_SECRET } from "./embedded-secrets.js";
 import { classifyError, GscAuthError } from "./errors.js";
 import { findFreeLoopbackPort, openBrowser } from "./platform.js";
+import { loadOAuthScopeFromFile } from "./oauthScope.js";
+import {
+  computeCodeChallenge,
+  generateCodeVerifier,
+  buildLoopbackRedirectUri,
+} from "./pkce.js";
 import { logger, withResilience } from "./resilience.js";
 
 const prompts = (promptsImport as unknown as { default?: typeof promptsImport }).default ?? promptsImport;
 
-const OAUTH_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 const OAUTH_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+
+// The OAuth scope is resolved from the repo's config.json (oauth.scope) — the
+// SAME source the runtime (src/oauthScope.ts) and the standalone
+// get-refresh-token.cjs helper use, so all three never drift.
+const DEFAULT_CONFIG_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "config.json",
+);
+
+/** Resolve the OAuth scope from config.json (falls back to the read-only default). */
+export function resolveAuthScope(configPath: string = DEFAULT_CONFIG_PATH): string {
+  return loadOAuthScopeFromFile(configPath);
+}
 
 interface CliArgs {
   siteUrl?: string;
@@ -66,15 +87,31 @@ function printHelp(): void {
 // OAUTH: LOOPBACK REDIRECT FLOW
 // ============================================
 
-function buildAuthUrl(clientId: string, redirectUri: string, state: string): string {
+export interface BuildAuthUrlOptions {
+  clientId: string;
+  redirectUri: string;
+  scope: string;
+  state: string;
+  codeChallenge: string;
+}
+
+export function buildAuthUrl({
+  clientId,
+  redirectUri,
+  scope,
+  state,
+  codeChallenge,
+}: BuildAuthUrlOptions): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: OAUTH_SCOPE,
-    access_type: "offline",
-    prompt: "consent",
+    scope,
+    access_type: "offline", // REQUIRED for Google to return a refresh_token
+    prompt: "consent", // force a refresh_token even on re-consent
     state,
+    code_challenge: codeChallenge, // PKCE S256
+    code_challenge_method: "S256",
   });
   return `${OAUTH_AUTH_URL}?${params.toString()}`;
 }
@@ -184,6 +221,7 @@ async function exchangeCodeForTokens(
   clientId: string,
   clientSecret: string,
   redirectUri: string,
+  codeVerifier: string,
 ): Promise<TokenResponse> {
   return withResilience(async () => {
     const body = new URLSearchParams({
@@ -192,6 +230,7 @@ async function exchangeCodeForTokens(
       client_secret: clientSecret,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
+      code_verifier: codeVerifier, // PKCE proof — sent on exchange
     });
     const res = await fetch(OAUTH_TOKEN_URL, {
       method: "POST",
@@ -311,16 +350,21 @@ export async function run(argv: string[] = process.argv.slice(2)): Promise<void>
   }
 
   const port = await findFreeLoopbackPort();
-  const redirectUri = `http://127.0.0.1:${port}`;
+  // Canonical loopback redirect shared with get-refresh-token.cjs:
+  // http://localhost:<port>/callback (Google ignores the port for loopback).
+  const redirectUri = buildLoopbackRedirectUri(port);
+  const scope = resolveAuthScope();
   const state = randomState();
-  const authUrl = buildAuthUrl(clientId, redirectUri, state);
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = computeCodeChallenge(codeVerifier);
+  const authUrl = buildAuthUrl({ clientId, redirectUri, scope, state, codeChallenge });
 
   process.stderr.write("\n=== mcp-gsc authentication ===\n");
 
   const { code } = await waitForAuthorizationCode(port, state, authUrl);
   process.stderr.write("Authorization code received. Exchanging for tokens...\n");
 
-  const tokens = await exchangeCodeForTokens(code, clientId, clientSecret, redirectUri);
+  const tokens = await exchangeCodeForTokens(code, clientId, clientSecret, redirectUri, codeVerifier);
   if (!tokens.refresh_token) {
     throw new GscAuthError(
       "Google did not return a refresh token. This can happen if you previously granted consent " +
@@ -338,7 +382,7 @@ export async function run(argv: string[] = process.argv.slice(2)): Promise<void>
     site_urls: sites.map((s) => s.siteUrl),
     primary_site_url: chosen.siteUrl,
     obtained_at: new Date().toISOString(),
-    scopes: [OAUTH_SCOPE],
+    scopes: [scope],
   };
   writeStoredCredentials(stored);
 
@@ -368,12 +412,21 @@ function randomState(): string {
 // ENTRY
 // ============================================
 
-// Always run when loaded as an entry point. The bin symlink name (mcp-gsc-auth)
-// differs from the file name (auth-cli.js), so import.meta.url checks don't
-// work reliably under npx. Since this module has no side effects when imported
-// as a library (run() must be called explicitly), unconditional execution is safe.
-run().catch((err) => {
-  const classified = classifyError(err);
-  process.stderr.write(`\n${classified.message}\n`);
-  process.exit(1);
-});
+// Run only when THIS file is the process entry point (npx mcp-gsc-auth ->
+// dist/auth-cli.js). The bin symlink name (mcp-gsc-auth) differs from the file
+// name, so we can't compare basenames exactly; instead we check that the entry
+// script path ends in "auth-cli". When imported for its pure exports
+// (buildAuthUrl, resolveAuthScope) — e.g. by tests or another module — argv[1]
+// is the importer (vitest runner, etc.), so the live loopback flow does NOT run.
+function isEntryPoint(): boolean {
+  const entry = process.argv[1] || "";
+  return /(^|[\\/])auth-cli(\.[cm]?js)?$/.test(entry);
+}
+
+if (isEntryPoint()) {
+  run().catch((err) => {
+    const classified = classifyError(err);
+    process.stderr.write(`\n${classified.message}\n`);
+    process.exit(1);
+  });
+}

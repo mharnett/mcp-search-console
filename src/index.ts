@@ -19,6 +19,7 @@ import {
   validateCredentials,
 } from "./errors.js";
 import { resolveOAuthCredentials } from "./credentials.js";
+import { loadOAuthScopeFromFile } from "./oauthScope.js";
 import { EMBEDDED_CLIENT_ID, EMBEDDED_CLIENT_SECRET } from "./embedded-secrets.js";
 import { tools } from "./tools.js";
 import { withResilience, safeResponse, logger } from "./resilience.js";
@@ -97,6 +98,11 @@ interface Config {
   // their own token instead of sharing the single global credentials file —
   // e.g. one Google account per client. Empty => use the global default path.
   oauth_credentials_file: string;
+  // OAuth scope requested when running in OAuth mode / by the SA client. Resolved
+  // from config.json `oauth.scope` (single source of truth shared with the auth
+  // helper), falling back to the read-only webmasters default. No machine-local
+  // path or hardcoded scope leaks in here.
+  oauth_scope: string;
   clients: Record<string, ClientConfig>;
 }
 
@@ -106,13 +112,20 @@ function loadConfig(): Config {
   // can run against different configs (e.g., one per client).
   const defaultConfigPath = join(dirname(fileURLToPath(import.meta.url)), "..", "config.json");
   const configPath = envTrimmed("MCP_GSC_CONFIG_PATH") || defaultConfigPath;
+  // Scope always resolves from the config file (present -> its oauth.scope;
+  // absent -> committed read-only default). Same contract as the auth helper.
+  const oauth_scope = loadOAuthScopeFromFile(configPath);
+
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"));
+    // The SA keyfile PATH comes from config.json `credentials_file` if set, else
+    // from GOOGLE_APPLICATION_CREDENTIALS. There is NO machine-local default.
     const rawCf = raw.credentials_file || envTrimmed("GOOGLE_APPLICATION_CREDENTIALS");
     const rawOauth = raw.oauth_credentials_file || "";
     return {
       credentials_file: rawCf && !isAbsolute(rawCf) ? resolve(rawCf) : rawCf,
       oauth_credentials_file: rawOauth && !isAbsolute(rawOauth) ? resolve(rawOauth) : rawOauth,
+      oauth_scope,
       clients: raw.clients || {},
     };
   }
@@ -124,6 +137,7 @@ function loadConfig(): Config {
     return {
       credentials_file: credsFile,
       oauth_credentials_file: "",
+      oauth_scope,
       clients: {},
     };
   }
@@ -133,6 +147,7 @@ function loadConfig(): Config {
   return {
     credentials_file: "",
     oauth_credentials_file: "",
+    oauth_scope,
     clients: {},
   };
 }
@@ -243,7 +258,7 @@ class GscManager {
       if (this.authMode === "service_account") {
         const auth = new google.auth.GoogleAuth({
           keyFile: this.config.credentials_file,
-          scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
+          scopes: [this.config.oauth_scope],
         });
         this.service = google.searchconsole({ version: "v1", auth });
         console.error(`[startup] Service account loaded from: ${this.config.credentials_file}`);
