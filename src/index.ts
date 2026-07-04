@@ -18,8 +18,9 @@ import {
   classifyError,
   validateCredentials,
 } from "./errors.js";
-import { resolveOAuthCredentials } from "./credentials.js";
+import { resolveOAuthCredentials, credentialsFilePath } from "./credentials.js";
 import { loadOAuthScopeFromFile } from "./oauthScope.js";
+import { selectAuthMode, type AuthModeSelection } from "./authMode.js";
 import { EMBEDDED_CLIENT_ID, EMBEDDED_CLIENT_SECRET } from "./embedded-secrets.js";
 import { tools } from "./tools.js";
 import { withResilience, safeResponse, logger } from "./resilience.js";
@@ -224,17 +225,67 @@ function parseDimensionFilter(filterStr: string): DimensionFilter | null {
 // GOOGLE SEARCH CONSOLE API CLIENT
 // ============================================
 
+/**
+ * Decide the runtime auth mode through the shared selectAuthMode() decision
+ * point (NOT an inline `if (credentials_file)` branch). Signals:
+ *   - credentialsFile: SA keyfile path (config.json / GOOGLE_APPLICATION_CREDENTIALS)
+ *   - refreshToken:     env GOOGLE_GSC_REFRESH_TOKEN
+ *   - hasStoredCreds:   a StoredCredentials file (auth-helper output) exists
+ * Returns "service_account" | "oauth" | "unconfigured". Never silently defaults
+ * to service_account when nothing is configured.
+ */
+export interface RuntimeAuthModeOptions {
+  /** Path checked for an existing StoredCredentials file. Defaults to the
+   *  per-config path (config.oauth_credentials_file) or the global default.
+   *  Injectable so tests can isolate from a real credentials file on the box. */
+  storedCredsPath?: string;
+  /** Env-like source for the refresh token. Defaults to process.env. */
+  env?: NodeJS.ProcessEnv;
+}
+
+export function resolveRuntimeAuthMode(
+  config: Config,
+  opts: RuntimeAuthModeOptions = {},
+): AuthModeSelection {
+  const credsPath = opts.storedCredsPath ?? (config.oauth_credentials_file || credentialsFilePath);
+  const env = opts.env ?? process.env;
+  const refreshToken = (env.GOOGLE_GSC_REFRESH_TOKEN || "").trim().replace(/^["']|["']$/g, "");
+  return selectAuthMode({
+    credentialsFile: config.credentials_file,
+    refreshToken,
+    hasStoredCreds: existsSync(credsPath),
+  });
+}
+
+/** Construct a GscManager, surfacing the onboarding error for the unconfigured case. */
+export function buildGscManager(config: Config, opts: RuntimeAuthModeOptions = {}): GscManager {
+  return new GscManager(config, opts);
+}
+
 class GscManager {
   private config: Config;
   private service: searchconsole_v1.Searchconsole | null = null;
   private authMode: "service_account" | "oauth" = "service_account";
 
-  constructor(config: Config) {
+  constructor(config: Config, authOpts: RuntimeAuthModeOptions = {}) {
     this.config = config;
 
-    if (config.credentials_file) {
-      // Service account mode
-      const creds = validateCredentials(config.credentials_file);
+    const selection = resolveRuntimeAuthMode(config, authOpts);
+
+    if (selection.mode === "unconfigured") {
+      // No SA keyfile and no OAuth signal. Emit a clear onboarding error instead
+      // of an incidental resolve() throw or a silent machine-local SA default.
+      const msg =
+        "No GSC credentials configured. Choose one auth mode:\n" +
+        "  - User OAuth: run `npx mcp-gsc-auth` (or `node get-refresh-token.cjs`) to mint " +
+        "a refresh token, then set GOOGLE_GSC_CLIENT_ID / GOOGLE_GSC_CLIENT_SECRET / GOOGLE_GSC_REFRESH_TOKEN.\n" +
+        "  - Service account: set GOOGLE_APPLICATION_CREDENTIALS to a JSON key file path.";
+      console.error(`[STARTUP ERROR] ${msg}`);
+      throw new GscAuthError(msg);
+    }
+
+    if (selection.mode === "service_account") {
+      const creds = validateCredentials(selection.credentialsFile);
       if (!creds.valid) {
         const msg = `[STARTUP ERROR] Missing required credentials: ${creds.missing.join(", ")}. MCP will not function.`;
         console.error(msg);
@@ -242,7 +293,8 @@ class GscManager {
       }
       this.authMode = "service_account";
     } else {
-      // OAuth mode -- resolve will throw with helpful message if no credentials found
+      // OAuth mode -- resolve will throw with helpful message if the token file
+      // is malformed / missing required fields.
       resolveOAuthCredentials(this.oauthCredsPath()); // validates credentials exist
       this.authMode = "oauth";
     }
@@ -416,8 +468,12 @@ class GscManager {
 // MCP SERVER
 // ============================================
 
-const config = loadConfig();
-const gscManager = new GscManager(config);
+// Populated by bootstrap() when this module is the process entry point. Kept as
+// module-level `let` so the request handlers below can close over them, while
+// importing this module for its pure exports (resolveRuntimeAuthMode,
+// buildGscManager) does NOT construct a manager or read credentials.
+let config: Config;
+let gscManager: GscManager;
 
 const server = new Server(
   {
@@ -558,6 +614,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start server
 async function main() {
+  // Initialize runtime state here (not at module load) so importing this module
+  // for its pure exports never reads credentials or constructs a manager.
+  config = loadConfig();
+  gscManager = new GscManager(config);
+
   try {
     await gscManager.listSites();
     console.error("[startup] Auth verified: GSC API call succeeded");
@@ -589,4 +650,14 @@ process.on("unhandledRejection", (reason) => {
   console.error("[error] Unhandled promise rejection:", reason);
 });
 
-main().catch(console.error);
+// Run the server only when this file is the process entry point (node
+// dist/index.js / npx mcp-gsc). When imported for its pure exports (tests,
+// library use), argv[1] is the importer, so the server does NOT start.
+function isEntryPoint(): boolean {
+  const entry = process.argv[1] || "";
+  return /(^|[\\/])index(\.[cm]?js)?$/.test(entry) || /[\\/]mcp-gsc$/.test(entry);
+}
+
+if (isEntryPoint()) {
+  main().catch(console.error);
+}

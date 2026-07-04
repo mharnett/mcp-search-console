@@ -1,6 +1,9 @@
 node_modules/
 dist/
 config.json
+# Per-client config overrides carry machine-local paths and must never ship or
+# be committed. The committed template (config.example.json) is re-included.
+config.*.json
+!config.example.json
 .env
-config.forcepoint.json
 run-forcepoint.sh
