@@ -53,6 +53,11 @@ function truncateArraysRecursively(obj: any, depth: number = 0): boolean {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
         if (truncateArraysRecursively(obj[key], depth + 1)) {
           truncated = true;
+          // Keep a sibling row_count consistent with the truncated array length
+          // so callers see row_count === rows.length after truncation.
+          if (Array.isArray(obj[key]) && "row_count" in obj) {
+            obj.row_count = obj[key].length;
+          }
         }
       }
     }
