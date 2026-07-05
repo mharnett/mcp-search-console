@@ -89,6 +89,20 @@ describe("resolveRuntimeAuthMode consults selectAuthMode (wiring)", () => {
     ).toBe("oauth");
   });
 
+  // PRECEDENCE (runtime wiring): when BOTH an explicit SA keyfile AND an OAuth
+  // refresh token are configured, the runtime must resolve to service_account.
+  // This pins the target precedence at the actual runtime entry point (not just
+  // the pure selectAuthMode unit). Non-vacuous: if the decision were flipped to
+  // OAuth-first, both signals present would resolve to "oauth" and this reddens.
+  it("BOTH SA keyfile AND env refresh token => service_account (SA wins)", () => {
+    expect(
+      resolveRuntimeAuthMode(baseConfig({ credentials_file: "/some/sa.json" }), {
+        ...noStored(),
+        env: { GOOGLE_GSC_REFRESH_TOKEN: "RT" } as NodeJS.ProcessEnv,
+      }).mode,
+    ).toBe("service_account");
+  });
+
   it("nothing configured => unconfigured (NOT a silent service_account default)", () => {
     // This is the case the old inline logic could not represent: with no SA path
     // and no OAuth signal it fell into the oauth branch and threw incidentally.

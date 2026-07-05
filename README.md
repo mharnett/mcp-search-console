@@ -32,9 +32,15 @@ npm run build
 
 mcp-gsc supports **two authentication modes**. Pick whichever fits your setup. Neither requires any file living at a hardcoded machine-local path -- credentials come from environment variables (or a `config.json` you create).
 
+**Which mode to use:**
+- **Service Account (Mode B) -- recommended for unattended / server / headless use.** A service account has no interactive login to expire or re-consent, so it is the right fit for always-on deployments. The one setup requirement is that the service account's email must be **granted access on each Search Console property** you want to query (see Mode B).
+- **User OAuth (Mode A) -- for personal / interactive use**, where you want to authorize with your own Google login.
+
+**Precedence when both are configured:** if a service-account keyfile is explicitly set (`GOOGLE_APPLICATION_CREDENTIALS`, or `credentials_file` in `config.json`), it **wins** over any OAuth refresh token or stored OAuth credentials. If neither is configured, the server fails loudly at startup with an onboarding message rather than silently guessing -- there is no machine-local default and no silent runtime failover between modes.
+
 ### Mode A: User OAuth (bring your own Google account)
 
-Use this if you want to authorize with your own Google login (the account that has Search Console access).
+Use this if you want to authorize with your own Google login (the account that has Search Console access). Best for personal / interactive use.
 
 1. In the Google Cloud Console, create an **OAuth 2.0 Client ID** of type **Desktop app** and enable the **Search Console API**. (For a Desktop-app client, Google accepts any `http://localhost` loopback redirect -- you do not need to pre-register a port.)
 2. Export your client credentials:
@@ -56,12 +62,12 @@ The server reads `GOOGLE_GSC_CLIENT_ID`, `GOOGLE_GSC_CLIENT_SECRET`, and `GOOGLE
 
 Alternatively, run the guided helper `npx mcp-gsc-auth`, which performs the same PKCE OAuth flow, lets you pick a default Search Console property, and writes the result to a per-user credentials file.
 
-### Mode B: Service Account
+### Mode B: Service Account (recommended for unattended / server use)
 
-Use this for server / headless contexts.
+Use this for server / headless / always-on contexts -- it is the recommended path when no human is present to complete or refresh an interactive login.
 
 1. Create a Google Cloud **service account** with Search Console API access and download its JSON key file.
-2. Add the service account's email as a user in Google Search Console for each property you want to query.
+2. **Grant the service account's email access on each Search Console property** you want to query (add it as a user in Search Console). Without this grant on the property, the service account can authenticate but will see no sites.
 3. Point the server at the key file **via an environment variable** (no hardcoded path):
    ```bash
    export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
