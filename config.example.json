@@ -1,5 +1,7 @@
 {
-  "credentials_file": "/path/to/service-account.json",
+  "oauth": {
+    "scope": "https://www.googleapis.com/auth/webmasters.readonly"
+  },
   "clients": {
     "my-client": {
       "name": "My Client",

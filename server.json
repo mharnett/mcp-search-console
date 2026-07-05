@@ -12,9 +12,34 @@
       "registryType": "npm",
       "identifier": "mcp-google-gsc",
       "version": "1.0.1",
-      "transport": { "type": "stdio" },
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
-        { "name": "GOOGLE_APPLICATION_CREDENTIALS", "description": "Path to service account JSON credentials file", "isRequired": true, "isSecret": false }
+        {
+          "name": "GOOGLE_APPLICATION_CREDENTIALS",
+          "description": "Service-account mode: path to a service account JSON key file. Optional -- provide this OR the OAuth variables below.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "GOOGLE_GSC_CLIENT_ID",
+          "description": "User-OAuth mode: OAuth 2.0 Desktop-app client ID from your own Google Cloud project.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "GOOGLE_GSC_CLIENT_SECRET",
+          "description": "User-OAuth mode: OAuth 2.0 client secret paired with GOOGLE_GSC_CLIENT_ID.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "GOOGLE_GSC_REFRESH_TOKEN",
+          "description": "User-OAuth mode: refresh token minted by the OAuth helper (get-refresh-token.cjs / mcp-gsc-auth).",
+          "isRequired": false,
+          "isSecret": true
+        }
       ]
     }
   ]
