@@ -3,12 +3,24 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  # Manual fallback: release-please's GITHUB_TOKEN can't trigger downstream
+  # workflows (anti-loop protection), so the release event from a release-
+  # please-created Release doesn't fire this workflow. workflow_dispatch
+  # lets us publish manually until that's fixed via a GitHub App token.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag or ref to publish (e.g. v1.1.4)'
+        required: true
+        type: string
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -25,6 +37,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -32,8 +46,47 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted Publishing (OIDC) requires npm >= 11.5. setup-node@v4 ships
+      # whatever ships with node 20 (~npm 10.x), which is too old. Pin here
+      # so the publish step picks up the OIDC token automatically.
+      - run: npm install -g npm@latest
+
       - run: npm ci
-      - run: npm run build
-      - run: npm publish --provenance --access public
+
+      # Fail fast if embedded secrets are missing. Without this guard, the build
+      # would silently succeed and publish an empty-secrets package to npm —
+      # every end-user's auth flow would then error with "set GOOGLE_CLIENT_ID
+      # in your environment", breaking the install flow.
+      #
+      # Canonical publish path is scripts/release.sh running locally on Mac with
+      # Keychain-sourced secrets. This CI workflow is a fallback only; configure
+      # secrets in repo settings (Settings > Secrets and variables > Actions)
+      # before triggering a Release-based publish.
+      - name: Verify embedded secrets are configured
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          EMBEDDED_CLIENT_ID: ${{ secrets.EMBEDDED_CLIENT_ID }}
+          EMBEDDED_CLIENT_SECRET: ${{ secrets.EMBEDDED_CLIENT_SECRET }}
+        run: |
+          missing=()
+          [ -z "$EMBEDDED_CLIENT_ID" ] && missing+=("EMBEDDED_CLIENT_ID")
+          [ -z "$EMBEDDED_CLIENT_SECRET" ] && missing+=("EMBEDDED_CLIENT_SECRET")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Cannot publish: missing GitHub repo secrets: ${missing[*]}"
+            echo "Either add these secrets under Settings > Secrets and variables > Actions,"
+            echo "or publish locally via scripts/release.sh instead of through this workflow."
+            exit 1
+          fi
+          echo "All embedded secrets present."
+
+      - name: Build with embedded OAuth credentials
+        # scripts/build.mjs reads EMBEDDED_* from env at build time via esbuild --define.
+        run: npm run build
+        env:
+          EMBEDDED_CLIENT_ID: ${{ secrets.EMBEDDED_CLIENT_ID }}
+          EMBEDDED_CLIENT_SECRET: ${{ secrets.EMBEDDED_CLIENT_SECRET }}
+
+      # Trusted Publishing: npm CLI authenticates via the OIDC token granted
+      # by `id-token: write` above. No NPM_TOKEN required as long as the
+      # package has a matching Trusted Publisher registered on npmjs.com
+      # (owner: mharnett, repo: mcp-search-console, workflow: publish.yml).
+      - run: npm publish --provenance --access public
