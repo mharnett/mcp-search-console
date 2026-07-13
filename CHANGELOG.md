@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.2.0...mcp-google-gsc-v1.2.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **gsc:** guard that per-client launchers pin their own refresh token ([3d05cd5](https://github.com/mharnett/mcp-search-console/commit/3d05cd5c3d3d0dbacef352e84237067186a46bcd))
+* **gsc:** guard that per-client launchers pin their own refresh token ([22379f3](https://github.com/mharnett/mcp-search-console/commit/22379f3bc5e05755d8f385d1526612df9257bfdb))
+
 ## [1.2.0](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.1.4...mcp-google-gsc-v1.2.0) (2026-07-09)
 
 
