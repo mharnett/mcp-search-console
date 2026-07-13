@@ -6,4 +6,8 @@ config.json
 config.*.json
 !config.example.json
 .env
+# Per-client launchers carry machine-local paths (/Users/...) and Keychain
+# service names. They are never committed and never shipped. The generic
+# run-mcp.sh (no absolute paths) IS tracked.
 run-forcepoint.sh
+run-neon-one.sh
