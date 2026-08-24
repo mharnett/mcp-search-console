@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Healthcheck — signal start
-        run: curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci/start" || true
+        run: curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci/start?create=1" || true
 
       - name: Check for sustained CI failure
         env:
@@ -85,4 +85,4 @@ jobs:
         run: |
           SUFFIX=""
           [ "${{ job.status }}" != "success" ] && SUFFIX="/fail"
-          curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci${SUFFIX}" || true
+          curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci${SUFFIX}?create=1" || true
