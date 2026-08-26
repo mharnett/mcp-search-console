@@ -13,7 +13,22 @@ jobs:
 
     steps:
       - name: Healthcheck — signal start
-        run: curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci/start?create=1" || true
+        run: |
+          # `|| true` used to swallow a rejected ping. When HC_PING_KEY was
+          # revoked on 2026-08-23 this workflow kept reporting success for two
+          # days while its own dead-man's-switch sat dead — the check only went
+          # `down` because the daily standing-failures digest noticed. A 4xx is
+          # OUR misconfiguration (bad/revoked key) and must fail loudly; a 5xx
+          # or a timeout is hc-ping's problem and stays a warning.
+          CODE=$(curl -m 10 -sS -o /dev/null -w '%{http_code}' \
+            "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci/start?create=1" || echo 000)
+          echo "hc-ping start -> HTTP $CODE"
+          case "$CODE" in
+            2*) ;;
+            4*) echo "::error::hc-ping rejected the ping (HTTP $CODE) — HC_PING_KEY is invalid or revoked; this monitor's dead-man's-switch is NOT armed."
+                exit 1 ;;
+            *)  echo "::warning::hc-ping unreachable (HTTP $CODE) — treating as transient, not failing the job." ;;
+          esac
 
       - name: Check for sustained CI failure
         env:
@@ -85,4 +100,12 @@ jobs:
         run: |
           SUFFIX=""
           [ "${{ job.status }}" != "success" ] && SUFFIX="/fail"
-          curl -m 10 -fsS "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci${SUFFIX}?create=1" || true
+          CODE=$(curl -m 10 -sS -o /dev/null -w '%{http_code}' \
+            "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/${{ github.event.repository.name }}-ci${SUFFIX}?create=1" || echo 000)
+          echo "hc-ping ${SUFFIX:-/success} -> HTTP $CODE"
+          case "$CODE" in
+            2*) ;;
+            4*) echo "::error::hc-ping rejected the ping (HTTP $CODE) — HC_PING_KEY is invalid or revoked; this monitor's dead-man's-switch is NOT armed."
+                exit 1 ;;
+            *)  echo "::warning::hc-ping unreachable (HTTP $CODE) — treating as transient, not failing the job." ;;
+          esac
