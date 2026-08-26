@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.1](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.2.0...mcp-google-gsc-v1.2.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **ci:** auto-provision hc-ping check via ?create=1 ([13dc439](https://github.com/mharnett/mcp-search-console/commit/13dc439658a67875e498fb7a4ba68491ecec64b2))
+* **ci:** auto-provision hc-ping check via ?create=1 ([73e8920](https://github.com/mharnett/mcp-search-console/commit/73e89207a1169a325683fcc49ac715f56051d31c))
+* **ci:** fail loudly when hc-ping rejects the ping ([45a0f98](https://github.com/mharnett/mcp-search-console/commit/45a0f98fd7190ffbe1a20d5761882124b7bd348d))
+* **ci:** fail loudly when hc-ping rejects the ping ([9250fdf](https://github.com/mharnett/mcp-search-console/commit/9250fdf48d5b9891a6341f680d9a2eba96e4ca47))
+* **gsc:** guard that per-client launchers pin their own refresh token ([3d05cd5](https://github.com/mharnett/mcp-search-console/commit/3d05cd5c3d3d0dbacef352e84237067186a46bcd))
+* **gsc:** guard that per-client launchers pin their own refresh token ([22379f3](https://github.com/mharnett/mcp-search-console/commit/22379f3bc5e05755d8f385d1526612df9257bfdb))
+
 ## [1.2.0](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.1.4...mcp-google-gsc-v1.2.0) (2026-07-09)
 
 
