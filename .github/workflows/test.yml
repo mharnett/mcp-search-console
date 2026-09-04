@@ -15,17 +15,17 @@ jobs:
         node-version: ['20.x', '22.x']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Checkout mcp-test-harness
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: mharnett/mcp-test-harness
           token: ${{ secrets.GH_PAT }}
           path: mcp-test-harness
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
