@@ -54,7 +54,7 @@
     "googleapis-common": "^7.2.0"
   },
   "devDependencies": {
-    "@drak-marketing/mcp-test-harness": "^0.1.2",
+    "@drak-marketing/mcp-test-harness": "^0.2.3",
     "@types/node": "^20.10.0",
     "@types/prompts": "^2.4.9",
     "esbuild": "^0.25.0",
