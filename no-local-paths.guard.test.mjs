@@ -17,7 +17,7 @@
 // excluded from ship by the `!dist/**/*.test.*` files rule, so they're skipped.
 //
 // Deliberately EXCLUDED: node_modules, .git, *.test.* / *.guard.* files, and
-// Mark's PRIVATE launcher scripts (run-mcp.sh, run-forcepoint.sh,
+// Mark's PRIVATE launcher scripts (run-mcp.sh, every run-<client>.sh,
 // scripts/healthcheck.sh) which are NOT in package.json `files` and never ship.
 // Those carry a /Users/mark path by design; the guard asserts separately that
 // they are not in the publish allowlist.
@@ -54,7 +54,7 @@ function shippedFiles(dir) {
     if (isTestOrGuard(entry)) continue;
     // config.json is gitignored/per-user — not shipped; config.example.json is.
     if (entry === "config.json") continue;
-    // Per-client config overrides (config.forcepoint.json, config.flowspace.json)
+    // Per-client config overrides (config.acme.json, config.globex.json)
     // are gitignored / private and never ship — skip them.
     if (/^config\..+\.json$/.test(entry)) continue;
     // Only scan source-like + docs + the helper + the example config.
@@ -130,7 +130,8 @@ describe("shipped surface has no local /Users/mark paths or gcp-oauth references
     const pkg = JSON.parse(readFileSync(path.join(REPO, "package.json"), "utf-8"));
     const allow = (pkg.files || []).join("\n");
     // These files exist and legitimately reference /Users/mark, but must never ship.
-    for (const priv of ["run-mcp.sh", "run-forcepoint.sh", "scripts/healthcheck.sh"]) {
+    const launchers = readdirSync(REPO).filter((f) => /^run-.+\.sh$/.test(f));
+    for (const priv of [...launchers, "scripts/healthcheck.sh"]) {
       if (existsSync(path.join(REPO, priv))) {
         expect(allow).not.toContain(priv);
       }

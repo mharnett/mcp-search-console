@@ -17,10 +17,10 @@
 // That is a cross-client correctness bug that no unit test and no healthcheck
 // (which only probes `initialize`) can catch.
 //
-// Real incident (2026-07-13): run-forcepoint.sh exported client_id/secret but
+// Real incident (2026-07-13): client A's launcher exported client_id/secret but
 // not a refresh token, relying on an `oauth_credentials_file` key that is dead
-// config. It had been reading a REVOKED token from the shared file; when Neon
-// One re-authed, it silently began authenticating as the Neon One account.
+// config. It had been reading a REVOKED token from the shared file; when
+// client B re-authed, it silently began authenticating as client B's account.
 //
 // Invariant: every top-level run-<client>.sh (i.e. every launcher except the
 // generic run-mcp.sh, which legitimately uses the shared file for a

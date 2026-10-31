@@ -58,19 +58,19 @@ afterEach(() => {
 describe("resolveOAuthCredentials — per-config path", () => {
   // ANCHOR: a custom path is honored; the token comes from THAT file.
   it("reads the refresh token from the supplied path", () => {
-    const p = join(tmp, "forcepoint-credentials.json");
-    writeStoredCredentials(storedFixture("TOKEN_FORCEPOINT", "https://www.forcepoint.com/"), p);
+    const p = join(tmp, "acme-credentials.json");
+    writeStoredCredentials(storedFixture("TOKEN_ACME", "https://www.example.com/"), p);
 
     const resolved = resolveOAuthCredentials(p);
 
-    expect(resolved.refresh_token).toBe("TOKEN_FORCEPOINT");
-    expect(resolved.primary_site_url).toBe("https://www.forcepoint.com/");
-    expect(resolved.site_urls).toContain("https://www.forcepoint.com/");
+    expect(resolved.refresh_token).toBe("TOKEN_ACME");
+    expect(resolved.primary_site_url).toBe("https://www.example.com/");
+    expect(resolved.site_urls).toContain("https://www.example.com/");
     expect(resolved.source).toBe("file");
   });
 
   // ANCHOR: two configs => two accounts, no cross-talk. This is the whole point
-  // of the change (Forcepoint and Flowspace must not share one token file).
+  // of the change (two clients must not share one token file).
   it("isolates tokens across two different paths", () => {
     const a = join(tmp, "client-a.json");
     const b = join(tmp, "client-b.json");
