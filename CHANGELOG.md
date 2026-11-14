@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.2.1...mcp-google-gsc-v1.2.2) (2026-11-14)
+
+
+### Bug Fixes
+
+* start the server when launched through the npx bin symlink ([#19](https://github.com/mharnett/mcp-search-console/issues/19)) ([ec3faf5](https://github.com/mharnett/mcp-search-console/commit/ec3faf5c17609925a6746a0abd8dc65b0ffbdd3f))
+
 ## [1.2.1](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.2.0...mcp-google-gsc-v1.2.1) (2026-08-26)
 
 
