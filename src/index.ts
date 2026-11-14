@@ -23,6 +23,7 @@ import { loadOAuthScopeFromFile } from "./oauthScope.js";
 import { selectAuthMode, type AuthModeSelection } from "./authMode.js";
 import { EMBEDDED_CLIENT_ID, EMBEDDED_CLIENT_SECRET } from "./embedded-secrets.js";
 import { tools } from "./tools.js";
+import { isMainModule } from "./entry-point.js";
 import { withResilience, safeResponse, logger } from "./resilience.js";
 import { checkForUpdate } from "mcp-updatenotifier";
 import v8 from "v8";
@@ -651,13 +652,8 @@ process.on("unhandledRejection", (reason) => {
 });
 
 // Run the server only when this file is the process entry point (node
-// dist/index.js / npx mcp-gsc). When imported for its pure exports (tests,
-// library use), argv[1] is the importer, so the server does NOT start.
-function isEntryPoint(): boolean {
-  const entry = process.argv[1] || "";
-  return /(^|[\\/])index(\.[cm]?js)?$/.test(entry) || /[\\/]mcp-gsc$/.test(entry);
-}
-
-if (isEntryPoint()) {
+// dist/index.js, or an npx/npm bin symlink to it). When imported for its pure
+// exports (tests, library use), argv[1] is the importer, so the server does NOT start.
+if (isMainModule(process.argv[1], import.meta.url)) {
   main().catch(console.error);
 }

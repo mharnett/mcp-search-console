@@ -10,6 +10,7 @@
 //   5. User picks which site to use as default
 //   6. Write credentials to ~/.config/mcp-gsc-nodejs/credentials.json
 
+import { isMainModule } from "./entry-point.js";
 import { google } from "googleapis";
 import http from "http";
 import path from "path";
@@ -412,18 +413,10 @@ function randomState(): string {
 // ENTRY
 // ============================================
 
-// Run only when THIS file is the process entry point (npx mcp-gsc-auth ->
-// dist/auth-cli.js). The bin symlink name (mcp-gsc-auth) differs from the file
-// name, so we can't compare basenames exactly; instead we check that the entry
-// script path ends in "auth-cli". When imported for its pure exports
-// (buildAuthUrl, resolveAuthScope) — e.g. by tests or another module — argv[1]
-// is the importer (vitest runner, etc.), so the live loopback flow does NOT run.
-function isEntryPoint(): boolean {
-  const entry = process.argv[1] || "";
-  return /(^|[\\/])auth-cli(\.[cm]?js)?$/.test(entry);
-}
-
-if (isEntryPoint()) {
+// Run only when THIS file is the process entry point (node dist/auth-cli.js, or the
+// npx bin symlink mcp-gsc-auth). When imported for its pure exports (buildAuthUrl,
+// resolveAuthScope) argv[1] is the importer, so the live loopback flow does NOT run.
+if (isMainModule(process.argv[1], import.meta.url)) {
   run().catch((err) => {
     const classified = classifyError(err);
     process.stderr.write(`\n${classified.message}\n`);
