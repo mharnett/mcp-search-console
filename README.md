@@ -2,6 +2,57 @@
 
 MCP server for Google Search Console -- search analytics, URL inspection, and site management via Claude.
 
+## Quick install
+
+Claude Code, one line (replace the placeholder values with your own; see [Configuration](#configuration) for how to get them):
+
+```bash
+claude mcp add --env GOOGLE_GSC_CLIENT_ID=YOUR_CLIENT_ID --env GOOGLE_GSC_CLIENT_SECRET=YOUR_CLIENT_SECRET --env GOOGLE_GSC_REFRESH_TOKEN=YOUR_REFRESH_TOKEN --transport stdio mcp-google-gsc -- npx -y mcp-google-gsc
+```
+
+The server is read-only: all four tools are reads and it only asks for the `webmasters.readonly` scope. For unattended use, set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account key file instead (see [Mode B](#mode-b-service-account-recommended-for-unattended--server-use)).
+
+<details>
+<summary>Claude Desktop</summary>
+
+Add this to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS), then fully quit and restart Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "mcp-google-gsc": {
+      "command": "npx",
+      "args": ["-y", "mcp-google-gsc"],
+      "env": {
+        "GOOGLE_GSC_CLIENT_ID": "YOUR_CLIENT_ID",
+        "GOOGLE_GSC_CLIENT_SECRET": "YOUR_CLIENT_SECRET",
+        "GOOGLE_GSC_REFRESH_TOKEN": "YOUR_REFRESH_TOKEN"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>Codex CLI</summary>
+
+Add this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.mcp-google-gsc]
+command = "npx"
+args = ["-y", "mcp-google-gsc"]
+
+[mcp_servers.mcp-google-gsc.env]
+GOOGLE_GSC_CLIENT_ID = "YOUR_CLIENT_ID"
+GOOGLE_GSC_CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+GOOGLE_GSC_REFRESH_TOKEN = "YOUR_REFRESH_TOKEN"
+```
+
+</details>
+
 ## Features
 
 - **Search Analytics** -- Query clicks, impressions, CTR, and position with flexible dimension filters (query, page, device, country, date)
