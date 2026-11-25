@@ -6,6 +6,33 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Dependency audit. scripts/npm-audit-gate.mjs fails this job on a high or
+  # critical advisory that scripts/npm-audit-ignores.json does not name, on an
+  # ignore past its date, and on an audit that failed or came back empty.
+  #
+  # Every tick, not once a week: a run that skipped the audit would be green
+  # and hide the red one before it. Its own job, so a finding neither fails
+  # the CI check below nor trips its dead-man's switch, and so it gets no
+  # secret and no write permission.
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # No npm ci: the audit reads package-lock.json only, so nothing is
+      # installed and no package code runs.
+      - run: node scripts/npm-audit-gate.mjs
+
   check:
     runs-on: ubuntu-latest
     permissions:
