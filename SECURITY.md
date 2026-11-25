@@ -19,4 +19,4 @@ In the private report, the useful details are the version, the tool or command, 
 ## What I assume
 
 - **A single-user Mac.** I build this for one person running it on their own Mac, or on another computer only they use. The server runs as you, over stdio, and can read what you can. Anyone able to run programs under your account can use your credentials.
-- **Your own platform credentials.** You connect the server to properties you already have access to, and Google decides what that login can do. A leaked token or key works without the server.
+- **Your own platform login.** You connect the server to properties you already have access to, and Google decides what that login can do. A leaked token or key works without the server.
