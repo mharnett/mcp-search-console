@@ -17,5 +17,12 @@ registerMcpTests({
   hasPlatform: true,
   requiredEnvVars: [],
   envPrefix: "GOOGLE_GSC_",
+  // Fakes only. With no credentials the server stops at "No GSC credentials
+  // configured"; one complete user-OAuth set lets it start.
+  startupEnv: {
+    GOOGLE_GSC_CLIENT_ID: "fake-gsc-client-id",
+    GOOGLE_GSC_CLIENT_SECRET: "fake-gsc-client-secret",
+    GOOGLE_GSC_REFRESH_TOKEN: "fake-gsc-refresh-token",
+  },
   sourceLintIgnore: ["index.ts"], // index.ts uses new URL for path resolution
 });
