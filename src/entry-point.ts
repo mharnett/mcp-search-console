@@ -18,3 +18,18 @@ export function isMainModule(argv1: string | undefined, moduleUrl: string): bool
     return false;
   }
 }
+
+/**
+ * Run the server's main(). A startup error ends the process with code 1, so a
+ * supervisor or shell sees a failed start instead of the 0 that logging the
+ * error and letting the event loop drain used to give. A main() that returns
+ * leaves the exit code alone: closing stdin or SIGTERM later still ends with 0.
+ */
+export async function runMain(main: () => Promise<void>): Promise<void> {
+  try {
+    await main();
+  } catch (err) {
+    console.error("[startup] FATAL:", err);
+    process.exit(1);
+  }
+}
