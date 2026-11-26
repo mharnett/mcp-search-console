@@ -492,8 +492,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools };
 });
 
+// Settles when the startup auth check has finished, pass or fail. It never
+// rejects. Tool calls wait for it, so none runs ahead of the check;
+// initialize and tools/list do not.
+let startupCheckSettled: Promise<void> = Promise.resolve();
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+  await startupCheckSettled;
 
   try {
     switch (name) {
@@ -613,6 +619,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+/** Runs the startup check and logs a failure. A failure never stops the server. */
+async function checkAuthAtStartup(): Promise<void> {
+  try {
+    await gscManager.listSites();
+    console.error("[startup] Auth verified: GSC API call succeeded");
+  } catch (err: any) {
+    console.error(`[STARTUP WARNING] Auth check FAILED: ${err.message}`);
+    console.error(`[STARTUP WARNING] API calls may fail until auth is fixed.`);
+  }
+}
+
 // Start server
 async function main() {
   // Initialize runtime state here (not at module load) so importing this module
@@ -620,15 +637,10 @@ async function main() {
   config = loadConfig();
   gscManager = new GscManager(config);
 
-  try {
-    await gscManager.listSites();
-    console.error("[startup] Auth verified: GSC API call succeeded");
-  } catch (err: any) {
-    console.error(`[STARTUP WARNING] Auth check FAILED: ${err.message}`);
-    console.error(`[STARTUP WARNING] MCP will start but API calls may fail until auth is fixed.`);
-  }
-
   const transport = new StdioServerTransport();
+  // Not awaited, so a slow check cannot hold initialize. Assigned before
+  // connect, so no tool call can arrive ahead of it.
+  startupCheckSettled = checkAuthAtStartup();
   await server.connect(transport);
   console.error("[startup] MCP GSC server running");
 }
