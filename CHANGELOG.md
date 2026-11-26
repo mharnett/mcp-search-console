@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.3](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.2.2...mcp-google-gsc-v1.2.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* answer initialize before the startup auth check finishes ([#33](https://github.com/mharnett/mcp-search-console/issues/33)) ([340ef3d](https://github.com/mharnett/mcp-search-console/commit/340ef3d5a605b868d9bbec8e43af2604af1dc7b6))
+* end with a non-zero exit code on a fatal startup error ([#29](https://github.com/mharnett/mcp-search-console/issues/29)) ([729b6d6](https://github.com/mharnett/mcp-search-console/commit/729b6d633b23a1dfb73e0b031f60d4dff2f58aed))
+
 ## [1.2.2](https://github.com/mharnett/mcp-search-console/compare/mcp-google-gsc-v1.2.1...mcp-google-gsc-v1.2.2) (2026-11-14)
 
 
